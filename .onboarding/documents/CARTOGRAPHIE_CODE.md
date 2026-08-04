@@ -348,7 +348,7 @@ Pas de `ETag`, pas de `Last-Modified`, pas de gzip. Acceptable pour 3 livraisons
 - ✅ Code lisible et concis (34 lignes pour le contrôleur complet).
 - ✅ Noms explicites (`DELIVERIES`, `list()`, `pending()`, `island`, `status`, `etaDays`).
 - ✅ Tests présents et lisibles (2 cas de test couvrant les deux endpoints).
-- ✅ Conformité Symfony moderne (attributs, JsonResponse, `AbstractController`).
+- ✅ Conformité Symfony moderne (attributs `#[Route(...)]`, `JsonResponse`).
 - ✅ Configuration minimale, facile à comprendre.
 
 ---
