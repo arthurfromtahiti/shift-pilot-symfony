@@ -1,0 +1,25 @@
+{
+    "name": "shift/pilot-symfony",
+    "description": "Pilote de test SHIFT/Paperclip — suivi de livraisons inter-îles (Polynésie française).",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1",
+        "symfony/framework-bundle": "5.4.*",
+        "symfony/http-kernel": "5.4.*",
+        "symfony/routing": "5.4.*",
+        "symfony/yaml": "5.4.*"
+    },
+    "require-dev": {
+        "symfony/phpunit-bridge": "5.4.*"
+    },
+    "autoload": {
+        "psr-4": { "App\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "App\\Tests\\": "tests/" }
+    },
+    "scripts": {
+        "test": "phpunit tests"
+    }
+}
