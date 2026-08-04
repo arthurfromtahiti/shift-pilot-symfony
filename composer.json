@@ -21,5 +21,10 @@
     },
     "scripts": {
         "test": "phpunit tests"
+    },
+    "config": {
+        "platform": {
+            "php": "8.3"
+        }
     }
 }
