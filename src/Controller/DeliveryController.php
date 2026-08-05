@@ -22,6 +22,16 @@ class DeliveryController
         return new JsonResponse(self::DELIVERIES);
     }
 
+    #[Route('/deliveries/pending/count', methods: ['GET'])]
+    public function pendingCount(): JsonResponse
+    {
+        $count = count(array_filter(
+            self::DELIVERIES,
+            fn(array $d) => $d['status'] !== 'livre'
+        ));
+        return new JsonResponse(['count' => $count]);
+    }
+
     #[Route('/deliveries/pending', methods: ['GET'])]
     public function pending(): JsonResponse
     {
