@@ -26,6 +26,16 @@ final class DeliveryControllerTest extends TestCase
         }
     }
 
+    public function testPendingCountReturnsCount(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->pendingCount();
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('count', $data);
+        $this->assertSame(2, $data['count']);
+    }
+
     public function testShowReturnsDeliveryById(): void
     {
         $controller = new DeliveryController();
