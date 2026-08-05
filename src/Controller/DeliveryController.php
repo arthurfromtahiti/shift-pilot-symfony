@@ -32,7 +32,7 @@ class DeliveryController
         return new JsonResponse($pending);
     }
 
-    #[Route('/deliveries/{id}', methods: ['GET'])]
+    #[Route('/deliveries/{id}', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(int $id): JsonResponse
     {
         foreach (self::DELIVERIES as $delivery) {
