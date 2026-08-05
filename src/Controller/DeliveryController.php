@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -17,9 +18,20 @@ class DeliveryController
     ];
 
     #[Route('/deliveries', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        return new JsonResponse(self::DELIVERIES);
+        $island = $request->query->get('island');
+
+        if ($island === null) {
+            return new JsonResponse(self::DELIVERIES);
+        }
+
+        $filtered = array_values(array_filter(
+            self::DELIVERIES,
+            fn(array $d) => $d['island'] === $island
+        ));
+
+        return new JsonResponse($filtered);
     }
 
     #[Route('/deliveries/pending', methods: ['GET'])]
