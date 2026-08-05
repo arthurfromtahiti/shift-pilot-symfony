@@ -31,4 +31,15 @@ class DeliveryController
         ));
         return new JsonResponse($pending);
     }
+
+    #[Route('/deliveries/{id}', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function show(int $id): JsonResponse
+    {
+        foreach (self::DELIVERIES as $delivery) {
+            if ($delivery['id'] === $id) {
+                return new JsonResponse($delivery);
+            }
+        }
+        return new JsonResponse(['error' => 'Livraison non trouvée'], 404);
+    }
 }
