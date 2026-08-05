@@ -28,7 +28,7 @@ class DeliveryController
 
         $filtered = array_values(array_filter(
             self::DELIVERIES,
-            fn(array $d) => $d['island'] === $island
+            fn(array $d) => strcasecmp($d['island'], $island) === 0
         ));
 
         return new JsonResponse($filtered);
