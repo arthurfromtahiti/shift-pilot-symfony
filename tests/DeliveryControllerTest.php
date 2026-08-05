@@ -25,6 +25,24 @@ final class DeliveryControllerTest extends TestCase
         $this->assertSame('Moorea', $data[0]['island']);
     }
 
+    public function testListFiltersByIslandCaseInsensitiveLowercase(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['island' => 'moorea']));
+        $data = json_decode($response->getContent(), true);
+        $this->assertCount(1, $data);
+        $this->assertSame('Moorea', $data[0]['island']);
+    }
+
+    public function testListFiltersByIslandCaseInsensitiveUppercase(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['island' => 'BORA BORA']));
+        $data = json_decode($response->getContent(), true);
+        $this->assertCount(1, $data);
+        $this->assertSame('Bora Bora', $data[0]['island']);
+    }
+
     public function testListReturnsEmptyArrayForUnknownIsland(): void
     {
         $controller = new DeliveryController();
