@@ -25,4 +25,23 @@ final class DeliveryControllerTest extends TestCase
             $this->assertNotSame('livre', $delivery['status']);
         }
     }
+
+    public function testShowReturnsDeliveryById(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->show(1);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame(1, $data['id']);
+        $this->assertSame('Bora Bora', $data['island']);
+    }
+
+    public function testShowReturns404ForUnknownId(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->show(999);
+        $this->assertSame(404, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Livraison non trouvée', $data['error']);
+    }
 }
