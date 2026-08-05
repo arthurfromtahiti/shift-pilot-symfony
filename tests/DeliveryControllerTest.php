@@ -25,4 +25,13 @@ final class DeliveryControllerTest extends TestCase
             $this->assertNotSame('livre', $delivery['status']);
         }
     }
+
+    public function testPendingCountReturnsNonDeliveredCount(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->pendingCount();
+        $data = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('count', $data);
+        $this->assertSame(2, $data['count']);
+    }
 }
