@@ -12,7 +12,7 @@ Les quatre endpoints implémentés font ce qu'ils déclarent. La cohérence fonc
 
 ## Constats détaillés
 
-`VÉRIFIÉ_CODE` : `GET /deliveries` accepte un paramètre optionnel `?island=` pour filtrer les livraisons par île (`src/Controller/DeliveryController.php:18-31`). La comparaison est insensible à la casse (`strcasecmp`) depuis `2cb3e1d` : `?island=moorea`, `?island=MOOREA` et `?island=Moorea` renvoient tous le même résultat. Sans paramètre, les 3 livraisons sont retournées intactes.
+`VÉRIFIÉ_CODE` : `GET /deliveries` accepte deux paramètres optionnels de filtrage. (1) `?island=` filtre les livraisons par île, comparaison insensible à la casse (`strcasecmp`) depuis `2cb3e1d` : `?island=moorea`, `?island=MOOREA` et `?island=Moorea` renvoient tous le même résultat. (2) `?maxEtaDays=N` (entier) filtre les livraisons dont `etaDays <= N` ; valeur non numérique ignorée. Les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5`). Sans paramètre, les 3 livraisons sont retournées intactes.
 
 `VÉRIFIÉ_CODE` : `GET /deliveries/{id}` retourne la livraison correspondant à l'identifiant ou une erreur 404 si l'identifiant est inconnu (`src/Controller/DeliveryController.php` — route avec contrainte `\d+`). Couvert par `testShowReturnsDeliveryById` et `testShowReturns404ForUnknownId`.
 

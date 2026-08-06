@@ -77,8 +77,10 @@ Exemple de réponse (données actuelles) :
 
 **Règles métier**
 
-- **Catalogue exhaustif sans condition** : la réponse inclut toujours *toutes* les livraisons de la constante (`src/Controller/DeliveryController.php:22`) — aucun filtrage, aucune pagination. Le client reçoit un tableau complet ou rien.
-- **Données invariantes à l'exécution** : la constante `DELIVERIES` est `private const` (`src/Controller/DeliveryController.php:12`) — aucun setter, aucune injection dynamique. Les données ne changent que par modification du code source et redéploiement.
+- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:30`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
+- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:24-25,31`, depuis PR#8 commit `40a273c`). Valeur non numérique → ignorée, filtre inactif. Absent → aucune limite sur ETA.
+- **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
+- **Données invariantes à l'exécution** : la constante `DELIVERIES` est `private const` (`src/Controller/DeliveryController.php:14`) — aucun setter, aucune injection dynamique. Les données ne changent que par modification du code source et redéploiement.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
 
 ### 2. Consulter les livraisons en attente d'acheminement
@@ -304,14 +306,13 @@ Un endpoint `GET /deliveries/{id}` est-il un besoin fonctionnel, même pour ce p
 - Créer une livraison (`POST /deliveries`)
 - Modifier une livraison (`PATCH /deliveries/{id}`, `PUT /deliveries/{id}`)
 - Supprimer une livraison (`DELETE /deliveries/{id}`)
-- Consulter une livraison unique (`GET /deliveries/{id}`)
-- Filtrer par île, statut, ou ETA (`?island=`, `?status=`, `?maxEtaDays=`)
+- Filtrer par statut (`?status=`)
 - Trier les résultats (`?sort=`)
 - Paginer les résultats (`?limit=`, `?offset=`)
 - Authentification ou autorisation
 - Cache, compression, ou optimisation de bande passante
 
-Toutes ces capacités sont absentes volontairement du pilote. Elles deviendraient des exigences prioritaires si le projet doit devenir un vrai système de suivi opérationnel.
+**Note** : les filtres `?island=` (PR#7) et `?maxEtaDays=` (PR#8) ont été implémentés et ne sont plus absents du pilote. Les capacités ci-dessus restent volontairement absentes et deviendraient des exigences prioritaires si le projet doit devenir un vrai système de suivi opérationnel.
 
 ---
 
