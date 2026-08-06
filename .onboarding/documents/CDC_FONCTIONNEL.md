@@ -47,7 +47,7 @@
 
 1. Le client émet une requête HTTP `GET /deliveries`.
 2. Symfony route le requête vers `DeliveryController::list()` (`src/Controller/DeliveryController.php:30`).
-3. La méthode retourne directement la constante `DeliveryController::DELIVERIES` (`src/Controller/DeliveryController.php:41-48`).
+3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:41-48`).
 4. Symfony sérialise le tableau en JSON et retourne HTTP 200 avec `Content-Type: application/json`.
 
 **Résultat attendu** : tableau JSON contenant toutes les livraisons, chacune avec les champs `id`, `island`, `status`, `etaDays`.
@@ -189,7 +189,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : chaque livraison dans la réponse JSON expose exactement les quatre champs `id`, `island`, `status`, `etaDays`, sans champ supplémentaire implicite.
 
-**Preuve** : la constante `DELIVERIES` (`src/Controller/DeliveryController.php:13-17`) définit la structure plate ; `JsonResponse` sérialise directement sans transformation.
+**Preuve** : la constante `DEFAULT_DELIVERIES` (`src/Controller/DeliveryController.php:14-18`) définit la structure plate ; `JsonResponse` sérialise directement sans transformation.
 
 **Critère d'acceptation** : chaque objet JSON de livraison contient exactement ces quatre clés, dans n'importe quel ordre.
 
@@ -332,4 +332,4 @@ Un endpoint `GET /deliveries/{id}` est-il un besoin fonctionnel, même pour ce p
 
 ## Synthèse des exigences
 
-**Résumé en trois phrases** : l'application expose plusieurs endpoints (GET et PATCH) sur un catalogue de livraisons inter-îles. Les endpoints GET (`/deliveries`, `/deliveries/pending`, `/deliveries/{id}`, `/deliveries/pending/count`) retournent les livraisons optionnellement filtrées par île et/ou ETA maximal ; le endpoint PATCH (`/deliveries/{id}`) permet de modifier le statut et l'ETA d'une livraison intra-requête. Données statiques, aucune persistance entre requêtes, aucune authentification — mutations éphémères et comportement cohérent pour un pilote.
+**Résumé en trois phrases** : l'application expose plusieurs endpoints (GET et PATCH) sur un catalogue de livraisons inter-îles. Les endpoints GET (`/deliveries`, `/deliveries/pending`, `/deliveries/{id}`, `/deliveries/pending/count`) retournent les livraisons optionnellement filtrées par île et/ou ETA maximal (rejet HTTP 400 si paramètres invalides) ; le endpoint PATCH (`/deliveries/{id}`) permet de modifier le statut et l'ETA d'une livraison intra-requête. Mutations éphémères (non persistées entre requêtes), aucune authentification — comportement cohérent pour un pilote de démonstration.
