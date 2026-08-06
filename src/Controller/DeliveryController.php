@@ -31,6 +31,11 @@ class DeliveryController
     {
         $island = $request->query->get('island');
         $maxEtaDaysRaw = $request->query->get('maxEtaDays');
+
+        if ($maxEtaDaysRaw !== null && !is_numeric($maxEtaDaysRaw)) {
+            return new JsonResponse(['error' => 'maxEtaDays invalide'], 400);
+        }
+
         $maxEtaDays = is_numeric($maxEtaDaysRaw) ? (int) $maxEtaDaysRaw : null;
 
         $filtered = array_values(array_filter(
