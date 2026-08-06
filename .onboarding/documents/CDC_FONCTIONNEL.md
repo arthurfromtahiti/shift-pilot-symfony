@@ -41,13 +41,13 @@
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:19`).
+**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:29`).
 
 **Étapes**
 
 1. Le client émet une requête HTTP `GET /deliveries`.
-2. Symfony route le requête vers `DeliveryController::list()` (`src/Controller/DeliveryController.php:20`).
-3. La méthode retourne directement la constante `DeliveryController::DELIVERIES` (`src/Controller/DeliveryController.php:22`).
+2. Symfony route le requête vers `DeliveryController::list()` (`src/Controller/DeliveryController.php:30`).
+3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:41-48`).
 4. Symfony sérialise le tableau en JSON et retourne HTTP 200 avec `Content-Type: application/json`.
 
 **Résultat attendu** : tableau JSON contenant toutes les livraisons, chacune avec les champs `id`, `island`, `status`, `etaDays`.
@@ -79,10 +79,10 @@ Exemple de réponse (données actuelles) :
 
 **Règles métier**
 
-- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:30`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
-- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:24-25,31`, depuis PR#8 commit `40a273c`). Valeur non numérique → ignorée, filtre inactif. Absent → aucune limite sur ETA.
+- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:43-44`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
+- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:33-46`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
 - **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
-- **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur. Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
+- **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur (`src/Controller/DeliveryController.php:24-26`). Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
 
 ### 2. Consulter les livraisons en attente d'acheminement
@@ -91,14 +91,14 @@ Exemple de réponse (données actuelles) :
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries/pending` (`src/Controller/DeliveryController.php:25`).
+**Point d'entrée** : `GET /deliveries/pending` (`src/Controller/DeliveryController.php:51-52`).
 
 **Étapes**
 
 1. Le client émet une requête HTTP `GET /deliveries/pending`.
-2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:26`).
-3. La méthode applique un filtre en mémoire : `array_filter(self::DELIVERIES, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:28-31`).
-4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:28`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
+2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:52`).
+3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:54-57`).
+4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:54`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
 5. La réponse est sérialisée en JSON et retournée avec HTTP 200.
 
 **Résultat attendu** : tableau JSON contenant uniquement les livraisons dont le champ `status` est différent de `'livre'`.
@@ -126,7 +126,7 @@ Note : Moorea (status `livre`) est exclue du résultat.
 
 **Règles métier**
 
-- **Définition de « en attente » par exclusion du statut terminal** : une livraison est « en attente » si et seulement si `status !== 'livre'` (`src/Controller/DeliveryController.php:30`). Toute valeur de statut autre que la chaîne littérale `'livre'` qualifie la livraison comme « en attente ».
+- **Définition de « en attente » par exclusion du statut terminal** : une livraison est « en attente » si et seulement si `status !== 'livre'` (`src/Controller/DeliveryController.php:56-57`). Toute valeur de statut autre que la chaîne littérale `'livre'` qualifie la livraison comme « en attente ».
 - **Filtre extensible silencieusement** : si de nouveaux statuts sont introduits dans `DELIVERIES` (ex. `annule`, `retarde`, `en_douane`), ils apparaîtront automatiquement dans la réponse `pending()` sans modification du code. Cette extensibilité silencieuse peut être intentionnelle (« toute livraison non terminée ») ou source de confusion (« les livraisons annulées doivent-elles figurer dans `pending()` ? »).
 - **Champ `etaDays` non utilisé comme critère** : une livraison dont `etaDays:0` mais dont `status !== 'livre'` est incluse dans les résultats. Le filtre ne repose que sur le champ `status`.
 - **Réindexation garantie** : le client reçoit toujours un tableau JSON (`[]`) bien formé, jamais un objet (`{}`), même si le filtrage réduit le nombre de résultats à zéro.
@@ -135,7 +135,7 @@ Note : Moorea (status `livre`) est exclue du résultat.
 
 ### Entité : Livraison
 
-**Modèle physique** : constante PHP `DeliveryController::DEFAULT_DELIVERIES` (`src/Controller/DeliveryController.php:14-18`), copiée dans la propriété d'instance `$deliveries` à chaque instanciation.
+**Modèle physique** : constante PHP `DeliveryController::DEFAULT_DELIVERIES` (`src/Controller/DeliveryController.php:14-18`), copiée dans la propriété d'instance `$this->deliveries` à chaque instanciation.
 
 **Modèle logique** (point de vue métier) :
 
@@ -169,7 +169,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer l'intégralité du catalogue de livraisons inter-îles en une seule requête `GET /deliveries`.
 
-**Preuve** : `src/Controller/DeliveryController.php:22` retourne `self::DELIVERIES` sans condition. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
+**Preuve** : `src/Controller/DeliveryController.php:41-48` retourne les livraisons filtrées par île et maxEtaDays. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant exactement le contenu de la constante.
 
@@ -179,7 +179,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer uniquement les livraisons dont le statut n'est pas `'livre'` en une seule requête `GET /deliveries/pending`.
 
-**Preuve** : `src/Controller/DeliveryController.php:28-31` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
+**Preuve** : `src/Controller/DeliveryController.php:54-57` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant uniquement les livraisons dont `status !== 'livre'`.
 
@@ -189,7 +189,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : chaque livraison dans la réponse JSON expose exactement les quatre champs `id`, `island`, `status`, `etaDays`, sans champ supplémentaire implicite.
 
-**Preuve** : la constante `DELIVERIES` (`src/Controller/DeliveryController.php:13-17`) définit la structure plate ; `JsonResponse` sérialise directement sans transformation.
+**Preuve** : la constante `DEFAULT_DELIVERIES` (`src/Controller/DeliveryController.php:14-18`) définit la structure plate ; `JsonResponse` sérialise directement sans transformation.
 
 **Critère d'acceptation** : chaque objet JSON de livraison contient exactement ces quatre clés, dans n'importe quel ordre.
 
@@ -199,7 +199,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : les deux routes sont accessibles sans authentification et répondent uniquement aux méthodes HTTP GET.
 
-**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:19,25`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
+**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:29,51`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
 
 **Critère d'acceptation** : `GET /deliveries` et `GET /deliveries/pending` retournent HTTP 200 ; `POST`, `PUT`, `PATCH`, `DELETE` retournent HTTP 405 (Method Not Allowed) ou sont non routable.
 
@@ -217,7 +217,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : documenter explicitement avant tout ajout de statut. Décider : est-ce une liste noire (`status !== 'livre'`) suffisante, ou faut-il une liste blanche (`status in ['en_transit', ...]`) ?
 
-**Source** : `src/Controller/DeliveryController.php:30`.
+**Source** : `src/Controller/DeliveryController.php:56-57`.
 
 ---
 
@@ -231,7 +231,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : explorer si une invariante existe : `(status == 'livre') ↔ (etaDays == 0)` ? Sinon, clarifier la sémantique de `etaDays` (estimé absolu, sans liaison avec le statut ?).
 
-**Source** : `src/Controller/DeliveryController.php:13-17` (données) ; aucun test dans `DeliveryControllerTest.php`.
+**Source** : `src/Controller/DeliveryController.php:14-18` (données) ; aucun test dans `DeliveryControllerTest.php`.
 
 ---
 
@@ -245,7 +245,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : si le projet doit devenir opérationnel, introduire une base de données et une couche de persistance (Doctrine ORM) comme prérequis fondamental.
 
-**Source** : `src/Controller/DeliveryController.php:22-27` (constructeur et propriété `$deliveries`).
+**Source** : `src/Controller/DeliveryController.php:24-26` (constructeur et propriété `$deliveries`).
 
 ---
 
@@ -259,7 +259,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire un versioning (`/api/v1/deliveries`) avant le premier changement de format de réponse.
 
-**Source** : `src/Controller/DeliveryController.php:19,25`.
+**Source** : `src/Controller/DeliveryController.php:29,51`.
 
 ---
 
@@ -273,7 +273,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire une couche d'authentification (`API key`, `JWT`, `OAuth2`) avant d'exposer des données réelles en production.
 
-**Source** : `src/Controller/DeliveryController.php:19,25` — aucune middleware de sécurité.
+**Source** : `src/Controller/DeliveryController.php:29,51` — aucune middleware de sécurité.
 
 ---
 
@@ -332,4 +332,4 @@ Un endpoint `GET /deliveries/{id}` est-il un besoin fonctionnel, même pour ce p
 
 ## Synthèse des exigences
 
-**Résumé en trois phrases** : l'application expose deux endpoints GET de lecture seule sur un catalogue de livraisons inter-îles. Le premier (`/deliveries`) retourne toutes les livraisons ; le second (`/deliveries/pending`) retourne celles dont le statut n'est pas `'livre'`. Données statiques, aucune persistance, aucune mutation, aucune authentification — comportement cohérent et prévisible pour un pilote.
+**Résumé en trois phrases** : l'application expose plusieurs endpoints (GET et PATCH) sur un catalogue de livraisons inter-îles. Les endpoints GET (`/deliveries`, `/deliveries/pending`, `/deliveries/{id}`, `/deliveries/pending/count`) retournent les livraisons optionnellement filtrées par île et/ou ETA maximal (rejet HTTP 400 si paramètres invalides) ; le endpoint PATCH (`/deliveries/{id}`) permet de modifier le statut et l'ETA d'une livraison intra-requête. Mutations éphémères (non persistées entre requêtes), aucune authentification — comportement cohérent pour un pilote de démonstration.
