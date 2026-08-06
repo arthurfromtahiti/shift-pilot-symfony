@@ -146,6 +146,37 @@ final class DeliveryControllerTest extends TestCase
         $data = json_decode($response->getContent(), true);
         $this->assertSame(1, $data['id']);
         $this->assertSame('livre', $data['status']);
+        $this->assertSame(0, $data['etaDays']);
+    }
+
+    public function testUpdateStatusToLivreResetEtaDaysToZero(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre']));
+        $response = $controller->update(1, $request);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame(0, $data['etaDays']);
+    }
+
+    public function testUpdateStatusToLivreWithPositiveEtaDaysReturns400(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre', 'etaDays' => 5]));
+        $response = $controller->update(1, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Combinaison incohérente : une livraison livrée ne peut avoir un délai d\'arrivée positif', $data['error']);
+    }
+
+    public function testUpdateEtaDaysToPositiveOnLivreDeliveryReturns400(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['etaDays' => 2]));
+        $response = $controller->update(2, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Combinaison incohérente : une livraison livrée ne peut avoir un délai d\'arrivée positif', $data['error']);
     }
 
     public function testUpdateStatusToEnTransit(): void
