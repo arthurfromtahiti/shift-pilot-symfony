@@ -21,14 +21,14 @@ class DeliveryController
     public function list(Request $request): JsonResponse
     {
         $island = $request->query->get('island');
-
-        if ($island === null) {
-            return new JsonResponse(self::DELIVERIES);
-        }
+        $maxEtaDaysRaw = $request->query->get('maxEtaDays');
+        $maxEtaDays = is_numeric($maxEtaDaysRaw) ? (int) $maxEtaDaysRaw : null;
 
         $filtered = array_values(array_filter(
             self::DELIVERIES,
-            fn(array $d) => strcasecmp($d['island'], $island) === 0
+            fn(array $d) =>
+                ($island === null || strcasecmp($d['island'], $island) === 0) &&
+                ($maxEtaDays === null || $d['etaDays'] <= $maxEtaDays)
         ));
 
         return new JsonResponse($filtered);

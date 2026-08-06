@@ -53,12 +53,14 @@ suivi-livraisons/
 
 ### `src/Controller/DeliveryController.php`
 
-**Rôle** : seul composant applicatif ; expose deux endpoints GET pour consulter l'état d'acheminement des livraisons.
+**Rôle** : seul composant applicatif ; expose quatre endpoints GET pour consulter l'état d'acheminement des livraisons.
 
 **Responsabilités**
 
-- Exposer l'endpoint `GET /deliveries` → liste complète des livraisons.
+- Exposer l'endpoint `GET /deliveries` → liste des livraisons, avec filtrage optionnel par `?island=` et `?maxEtaDays=`.
 - Exposer l'endpoint `GET /deliveries/pending` → liste filtrée (status != 'livre').
+- Exposer l'endpoint `GET /deliveries/pending/count` → nombre de livraisons en attente.
+- Exposer l'endpoint `GET /deliveries/{id}` → livraison par identifiant.
 - Héberger la source de données : constante `DELIVERIES`.
 
 **Structure**
@@ -84,14 +86,14 @@ class DeliveryController
 
 | Ligne | Signification |
 |------|---------------|
-| 12 | `private const DELIVERIES` — source de données unique, immutable |
-| 13-17 | Tableau statique : 3 livraisons de demo |
-| 19 | `#[Route('/deliveries', methods: ['GET'])]` — première déclaration de route |
-| 20 | `public function list()` — première méthode métier |
-| 22 | `new JsonResponse(self::DELIVERIES)` — retour brut de la constante |
-| 25 | `#[Route('/deliveries/pending', methods: ['GET'])]` — deuxième déclaration |
-| 26 | `public function pending()` — deuxième méthode métier |
-| 28-31 | `array_filter(..., fn => $d['status'] !== 'livre')` — logique de filtrage critique |
+| 14-18 | `private const DELIVERIES` — source de données unique, immutable |
+| 15-17 | Tableau statique : 3 livraisons de demo (id, island, status, etaDays) |
+| 20-35 | `public function list(Request $request)` — extraction paramètres `?island=` et `?maxEtaDays=`, filtrage combiné |
+| 23-25 | Parsing de `maxEtaDays` : `is_numeric($maxEtaDaysRaw) ? (int) $maxEtaDaysRaw : null` |
+| 27-32 | `array_filter(..., fn => (island===null || strcasecmp) && (maxEtaDays===null || etaDays<=maxEtaDays))` |
+| 37-45 | `public function pending()` — filtrage status != 'livre' |
+| 47-55 | `public function pendingCount()` — compte les livraisons en attente |
+| 57-66 | `public function show(int $id)` — retourne livraison par ID ou 404 |
 
 **Points d'entrée**
 
@@ -140,14 +142,26 @@ controllers:
 
 ### `tests/DeliveryControllerTest.php`
 
-**Rôle** : suite de tests unitaires couvrant les deux endpoints.
+**Rôle** : suite de tests unitaires couvrant les quatre endpoints et leurs variations de filtrage.
 
 **Couverture**
 
 | Cas de test | Méthode testée | Ligne | Assertion clé |
 |-------------|----------------|-------|----------------|
-| `testListReturnsAllDeliveries` | `DeliveryController::list()` | 9-16 | `count($response) === 3` |
-| `testPendingExcludesDelivered` | `DeliveryController::pending()` | 18-27 | `count($response) === 2` + aucun avec `status == 'livre'` |
+| `testListReturnsAllDeliveries` | `DeliveryController::list()` | 11-17 | Sans param → 3 livraisons |
+| `testListFiltersByIsland` | `DeliveryController::list(?island=)` | 19-26 | `?island=Moorea` → 1 livraison |
+| `testListFiltersByIslandCaseInsensitiveLowercase` | `DeliveryController::list(?island=)` | 28-35 | `?island=moorea` → 1 livraison (strcasecmp) |
+| `testListFiltersByIslandCaseInsensitiveUppercase` | `DeliveryController::list(?island=)` | 37-44 | `?island=BORA BORA` → 1 livraison (strcasecmp) |
+| `testListReturnsEmptyArrayForUnknownIsland` | `DeliveryController::list(?island=)` | 46-53 | `?island=Tahiti` → tableau vide |
+| `testPendingExcludesDelivered` | `DeliveryController::pending()` | 55-64 | 2 livraisons (status != 'livre') |
+| `testPendingCountReturnsCount` | `DeliveryController::pendingCount()` | 66-74 | count: 2 |
+| `testShowReturnsDeliveryById` | `DeliveryController::show(id)` | 76-84 | `/deliveries/1` → Bora Bora |
+| `testShowReturns404ForUnknownId` | `DeliveryController::show(id)` | 86-93 | `/deliveries/999` → 404 |
+| `testListFiltersByMaxEtaDays` | `DeliveryController::list(?maxEtaDays=)` | 95-104 | `?maxEtaDays=3` → 2 livraisons (Bora Bora, Moorea) |
+| `testListFiltersByMaxEtaDaysZero` | `DeliveryController::list(?maxEtaDays=)` | 106-113 | `?maxEtaDays=0` → 1 livraison (Moorea) |
+| `testListFiltersByMaxEtaDaysAll` | `DeliveryController::list(?maxEtaDays=)` | 115-121 | `?maxEtaDays=5` → 3 livraisons |
+| `testListFiltersByIslandAndMaxEtaDays` | `DeliveryController::list(?island=&?maxEtaDays=)` | 123-130 | `?island=Bora Bora&maxEtaDays=3` → 1 livraison |
+| `testListFiltersByIslandAndMaxEtaDaysNoResult` | `DeliveryController::list(?island=&?maxEtaDays=)` | 132-138 | `?island=Huahine&maxEtaDays=3` → 0 livraison (5 > 3) |
 
 **Approche**
 
@@ -209,8 +223,10 @@ controllers:
 
 | Endpoint | Verbe | Déclaration | Implémentation | Statut |
 |----------|-------|-------------|-----------------|--------|
-| `/deliveries` | GET | `src/Controller/DeliveryController.php:19` | `DeliveryController::list():JsonResponse` | Opérationnel (données statiques) |
-| `/deliveries/pending` | GET | `src/Controller/DeliveryController.php:25` | `DeliveryController::pending():JsonResponse` | Opérationnel (filtrage en mémoire) |
+| `/deliveries` | GET | `src/Controller/DeliveryController.php:20` | `DeliveryController::list(Request):JsonResponse` | Opérationnel (filtres `?island=` et `?maxEtaDays=`) |
+| `/deliveries/pending` | GET | `src/Controller/DeliveryController.php:37` | `DeliveryController::pending():JsonResponse` | Opérationnel (filtrage statut) |
+| `/deliveries/pending/count` | GET | `src/Controller/DeliveryController.php:47` | `DeliveryController::pendingCount():JsonResponse` | Opérationnel (compte livraisons) |
+| `/deliveries/{id}` | GET | `src/Controller/DeliveryController.php:57` | `DeliveryController::show(int):JsonResponse` | Opérationnel (par identifiant) |
 | Autres verbes / routes | — | — | — | Non implémenté |
 
 ---
