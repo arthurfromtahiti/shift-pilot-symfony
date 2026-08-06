@@ -279,4 +279,22 @@ final class DeliveryControllerTest extends TestCase
         $data = json_decode($response->getContent(), true);
         $this->assertSame('maxEtaDays invalide', $data['error']);
     }
+
+    public function testListReturns400WhenIslandIsArray(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['island' => ['Moorea', 'Bora Bora']]));
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $data);
+    }
+
+    public function testListReturns400WhenMaxEtaDaysIsArray(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['maxEtaDays' => ['3']]));
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('error', $data);
+    }
 }
