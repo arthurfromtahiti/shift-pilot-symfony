@@ -97,7 +97,7 @@ Exemple de réponse (données actuelles) :
 
 1. Le client émet une requête HTTP `GET /deliveries/pending`.
 2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:52`).
-3. La méthode applique un filtre en mémoire : `array_filter(self::DELIVERIES, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:54-57`).
+3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:54-57`).
 4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:54`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
 5. La réponse est sérialisée en JSON et retournée avec HTTP 200.
 
