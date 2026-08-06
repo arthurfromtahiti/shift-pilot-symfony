@@ -104,11 +104,22 @@ class DeliveryController
 
         foreach ($this->deliveries as &$delivery) {
             if ($delivery['id'] === $id) {
+                $newStatus = $hasStatus ? $body['status'] : $delivery['status'];
+                $autoResetEta = $hasStatus && $body['status'] === 'livre' && !$hasEtaDays;
+                $effectiveEtaDays = $autoResetEta ? 0 : ($hasEtaDays ? $body['etaDays'] : $delivery['etaDays']);
+
+                if ($newStatus === 'livre' && $effectiveEtaDays > 0) {
+                    return new JsonResponse(['error' => 'Combinaison incohérente : une livraison livrée ne peut avoir un délai d\'arrivée positif'], 400);
+                }
+
                 if ($hasStatus) {
                     $delivery['status'] = $body['status'];
                 }
                 if ($hasEtaDays) {
                     $delivery['etaDays'] = $body['etaDays'];
+                }
+                if ($autoResetEta) {
+                    $delivery['etaDays'] = 0;
                 }
                 return new JsonResponse($delivery);
             }

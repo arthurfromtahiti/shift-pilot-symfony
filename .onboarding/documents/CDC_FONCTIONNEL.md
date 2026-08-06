@@ -144,7 +144,7 @@ Note : Moorea (status `livre`) est exclue du résultat.
 | `id` | entier | Identifiant unique de la livraison | Valeur unique implicite | Pas d'index, pas de contrainte d'unicité enforced au code |
 | `island` | chaîne | Île de destination du fret | Valeur parmi les îles connues de Polynésie française | Pas de validation énumérée ; n'importe quelle chaîne est acceptée |
 | `status` | chaîne | État d'acheminement de la livraison | Valeurs observées : `en_transit`, `livre` | Valeurs non énumérées ; nouvelle valeur introduite silencieusement affecte `pending()` |
-| `etaDays` | entier | Nombre de jours estimés avant livraison | Inféré des données : ≥ 0 ; `livre` ↔ `etaDays:0` (tendanciel, pas enforced) | Aucune contrainte d'intégrité ; une livraison `en_transit` avec `etaDays:0` est logiquement incohérente mais acceptée |
+| `etaDays` | entier | Nombre de jours estimés avant livraison | Inféré des données : ≥ 0 ; `livre` ↔ `etaDays:0` (enforced depuis PR#12 — SHIA-409) | Rejet HTTP 400 si `status == 'livre'` et `etaDays > 0` ; une livraison `en_transit` avec `etaDays:0` reste techniquement acceptée (règle asymétrique) |
 
 ### Données actuelles
 
@@ -221,17 +221,17 @@ private const DEFAULT_DELIVERIES = [
 
 ---
 
-### Risque 2 : Incohérence `etaDays` / `status` non contrôlée
+### Risque 2 : Incohérence `etaDays` / `status` — partiellement mitigée depuis PR#12
 
-**Description** : aucune contrainte d'intégrité ne lie `etaDays` et `status`. Une livraison peut être `en_transit` avec `etaDays:0` (délai d'arrivée atteint mais pas marquée livrée — logiquement incohérente).
+**Description** : l'invariante `(status == 'livre') → (etaDays == 0)` est enforced depuis PR#12 (SHIA-409) : PATCH /deliveries/{id} retourne HTTP 400 si le statut résultant est `livre` et que `etaDays > 0`. Le sens inverse (`etaDays == 0` n'implique pas `status == 'livre'`) n'est pas contrôlé — une livraison `en_transit` avec `etaDays:0` reste techniquement acceptée.
 
-**Impact** : fausses données retournées par `pending()` ; opérateur ignore si une livraison est réellement en attente ou si c'est une anomalie de données.
+**Impact** : risque réduit pour le cas le plus visible (livraison marquée livrée avec ETA non nul). Le cas résiduel (`en_transit` + `etaDays:0`) reste une anomalie de données possible.
 
-**Mitigation actuelle** : aucune — ni test ni validation.
+**Mitigation actuelle** : rejet 400 enforced par `src/Controller/DeliveryController.php:update()` depuis PR#12 ; 4 tests de non-régression dans `tests/DeliveryControllerTest.php` (`testUpdateStatusToLivre`, `testUpdateStatusToLivreResetEtaDaysToZero`, `testUpdateStatusToLivreWithPositiveEtaDaysReturns400`, `testUpdateEtaDaysToPositiveOnLivreDeliveryReturns400`).
 
-**Recommandation** : explorer si une invariante existe : `(status == 'livre') ↔ (etaDays == 0)` ? Sinon, clarifier la sémantique de `etaDays` (estimé absolu, sans liaison avec le statut ?).
+**Recommandation** : évaluer si l'invariante réciproque (`etaDays == 0` → `status == 'livre'`) doit être enforced (PATCH sur `en_transit` avec `etaDays:0` devrait-il être rejeté ou accepté ?).
 
-**Source** : `src/Controller/DeliveryController.php:14-18` (données) ; aucun test dans `DeliveryControllerTest.php`.
+**Source** : `src/Controller/DeliveryController.php:14-18` (données) ; `src/Controller/DeliveryController.php:update()` (validation PR#12).
 
 ---
 
@@ -326,7 +326,7 @@ Un endpoint `GET /deliveries/{id}` est-il un besoin fonctionnel, même pour ce p
 | `pending()` retourne 2 livraisons | `tests/DeliveryControllerTest.php:18-27` | Test unitaire (`testPendingExcludesDelivered`) | `$response->getContent()` décodé contient 2 éléments sans aucun avec `status == 'livre'` | High (code lu) |
 | Aucun test d'intégration HTTP | — | Absent | Bootstrap Symfony (`Kernel.php`, `public/index.php`) manquant | N/A |
 | Aucun test de validation de sortie | — | Absent | Pas de test vérifiant l'absence de champ surprise dans la réponse | Low |
-| Aucun test de règles de statut | — | Absent | Pas de test vérifiant l'invariante `etaDays` / `status` | Low |
+| Invariante `etaDays` / `status` (sens `livre` → `etaDays==0`) | `tests/DeliveryControllerTest.php` | 4 tests ajoutés PR#12 : `testUpdateStatusToLivre`, `testUpdateStatusToLivreResetEtaDaysToZero`, `testUpdateStatusToLivreWithPositiveEtaDaysReturns400`, `testUpdateEtaDaysToPositiveOnLivreDeliveryReturns400` | HTTP 400 si violation, auto-reset `etaDays` à 0 lors du passage à `livre` | High (code lu) |
 
 ---
 
