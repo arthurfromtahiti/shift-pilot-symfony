@@ -136,4 +136,107 @@ final class DeliveryControllerTest extends TestCase
         $data = json_decode($response->getContent(), true);
         $this->assertSame([], $data);
     }
+
+    public function testUpdateStatusToLivre(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre']));
+        $response = $controller->update(1, $request);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame(1, $data['id']);
+        $this->assertSame('livre', $data['status']);
+    }
+
+    public function testUpdateStatusToEnTransit(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'en_transit']));
+        $response = $controller->update(2, $request);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('en_transit', $data['status']);
+    }
+
+    public function testUpdateEtaDays(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['etaDays' => 1]));
+        $response = $controller->update(3, $request);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame(1, $data['etaDays']);
+    }
+
+    public function testUpdateStatusAndEtaDays(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre', 'etaDays' => 0]));
+        $response = $controller->update(3, $request);
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('livre', $data['status']);
+        $this->assertSame(0, $data['etaDays']);
+    }
+
+    public function testUpdateReturns404ForUnknownId(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre']));
+        $response = $controller->update(999, $request);
+        $this->assertSame(404, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Livraison non trouvée', $data['error']);
+    }
+
+    public function testUpdateReturns400ForInvalidStatus(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'perdu']));
+        $response = $controller->update(1, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Statut invalide', $data['error']);
+    }
+
+    public function testUpdateReturns400ForNegativeEtaDays(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['etaDays' => -1]));
+        $response = $controller->update(1, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('etaDays invalide', $data['error']);
+    }
+
+    public function testUpdateReturns400WhenNoFields(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode([]));
+        $response = $controller->update(1, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Aucun champ à mettre à jour', $data['error']);
+    }
+
+    public function testUpdateReturns400ForInvalidJson(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], 'not-json');
+        $response = $controller->update(1, $request);
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('Corps de requête invalide', $data['error']);
+    }
+
+    public function testUpdateMutatesStateWithinSameInstance(): void
+    {
+        $controller = new DeliveryController();
+        $request = new Request([], [], [], [], [], [], json_encode(['status' => 'livre']));
+        $controller->update(1, $request);
+
+        $response = $controller->pendingCount();
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame(1, $data['count']);
+    }
 }
