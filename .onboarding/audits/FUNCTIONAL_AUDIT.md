@@ -4,11 +4,11 @@
 
 ## Compréhension globale
 
-Le projet implémente quatre fonctionnalités en lecture : la liste complète des livraisons inter-îles (avec filtrage optionnel insensible à la casse par île via `?island=`), la consultation d'une livraison par son identifiant, la liste des livraisons non encore livrées, et le comptage de ces livraisons en attente. Les données sont statiques et fictives (3 livraisons codées en dur). L'application est fonctionnellement cohérente pour son périmètre de pilote déclaré, mais incomplète comme outil métier réel : aucune opération de création, modification ou suppression n'est implémentée.
+Le projet implémente cinq fonctionnalités : quatre en lecture (la liste complète des livraisons inter-îles avec filtrage optionnel par île via `?island=` et par délai via `?maxEtaDays=`, la consultation d'une livraison par identifiant, la liste des livraisons non encore livrées, et leur comptage) et une de mutation (`PATCH /deliveries/{id}` pour faire évoluer le statut et/ou `etaDays`). Les données de départ sont fictives (3 livraisons codées en dur), mutables intra-requête via PATCH, mais éphémères : elles se réinitialisent à chaque nouvelle instance (chaque requête Symfony). L'application est fonctionnellement cohérente pour son périmètre de pilote déclaré.
 
 ## Résumé exécutif
 
-Les quatre endpoints implémentés font ce qu'ils déclarent. La cohérence fonctionnelle est bonne au regard du périmètre pilote. Deux points méritent attention d'un tech lead : (1) la définition de « en attente » par exclusion négative (`status !== 'livre'`) est une règle implicite et ouverte qui inclura silencieusement tout nouveau statut non prévu lors d'une extension du modèle — risque fonctionnel concret identifié dès la conception ; (2) le champ `etaDays` n'est pas lié au statut par une contrainte d'intégrité : une livraison `en_transit` avec `etaDays:0` serait retournée dans `pending` sans avertissement. L'application ne répond qu'au besoin de consultation en lecture et est explicitement déclarée comme pilote dans `README.md:3` et `composer.json:3`.
+Les cinq endpoints implémentés font ce qu'ils déclarent. La cohérence fonctionnelle est bonne au regard du périmètre pilote. Deux points méritent attention d'un tech lead : (1) la définition de « en attente » par exclusion négative (`status !== 'livre'`) est une règle implicite et ouverte qui inclura silencieusement tout nouveau statut non prévu lors d'une extension du modèle — risque fonctionnel concret identifié dès la conception ; (2) le champ `etaDays` n'est pas lié au statut par une contrainte d'intégrité : une livraison `en_transit` avec `etaDays:0` serait retournée dans `pending` sans avertissement. L'application est explicitement déclarée comme pilote dans `README.md:3` et `composer.json:3`.
 
 ## Constats détaillés
 
@@ -20,7 +20,7 @@ Les quatre endpoints implémentés font ce qu'ils déclarent. La cohérence fonc
 
 `VÉRIFIÉ_CODE` : `GET /deliveries/pending/count` retourne le nombre de livraisons en attente sous la forme `{"count": N}`. Cohérent avec `GET /deliveries/pending` — même logique de filtre.
 
-`VÉRIFIÉ_CODE` : Aucune opération de mutation n'est implémentée — aucun endpoint `POST /deliveries`, `PUT /deliveries/{id}`, `PATCH /deliveries/{id}/status`, `DELETE /deliveries/{id}`. Le système est strictement en lecture.
+`VÉRIFIÉ_CODE` : `PATCH /deliveries/{id}` accepte un payload JSON avec `status` (valeurs valides : `en_transit`, `livre`) et/ou `etaDays` (entier ≥ 0). La méthode `update()` valide le payload (`array_key_exists`, `in_array strict`, `is_int + ≥ 0`), applique la mutation par référence sur `$this->deliveries`, et retourne 200 avec la livraison mise à jour, 400 en cas de validation échouée, ou 404 si l'identifiant est inconnu. Les modifications sont effectives intra-requête (ex. `pendingCount` diminue après un passage à `livre`), mais éphémères : `$this->deliveries` est réinitialisé depuis `DEFAULT_DELIVERIES` à chaque instanciation du contrôleur (chaque requête Symfony crée une instance fraîche). Aucun endpoint `POST /deliveries`, `PUT /deliveries/{id}`, `DELETE /deliveries/{id}` n'est implémenté.
 
 `VÉRIFIÉ_CODE` : Pas de pagination, pas de tri, pas de filtrage par `?status=` ou `?limit=`. Sur 3 livraisons statiques, aucun problème. Sur un vrai catalogue de livraisons inter-îles à forte volumétrie, ce serait une limitation fonctionnelle et de performance.
 
@@ -36,7 +36,7 @@ Les quatre endpoints implémentés font ce qu'ils déclarent. La cohérence fonc
 
 ## Dettes techniques
 
-- Aucune opération de mutation : complétude fonctionnelle nulle en dehors du pilote — premier blocage si le projet doit devenir opérationnel
+- Mutations éphémères non persistées : les changements via `PATCH` sont perdus entre requêtes (propriété d'instance réinitialisée) — acceptable pour le pilote, bloquant pour un usage opérationnel réel
 - Règle de filtrage de `pending()` implicite et non documentée : `status !== 'livre'` ouverte à extension silencieuse
 - Pas de versioning d'API : tout ajout de route sans versioning rendra la rétrocompatibilité impossible à garantir
 - Pas de documentation d'API

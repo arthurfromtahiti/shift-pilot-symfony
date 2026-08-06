@@ -108,6 +108,7 @@ class DeliveryController
                 return new JsonResponse($delivery);
             }
         }
+        unset($delivery);
 
         return new JsonResponse(['error' => 'Livraison non trouvée'], 404);
     }
