@@ -18,12 +18,14 @@
 - **Peut faire** :
   - Récupérer la liste complète des livraisons connues du système.
   - Récupérer la sous-liste des livraisons dont l'acheminement n'est pas encore terminé.
-  - Interpréter les champs `id`, `island`, `status`, `etaDays` de chaque livraison.
-- **Ne peut pas faire** :
-  - Créer, modifier ou supprimer une livraison.
   - Consulter une livraison unique par son identifiant.
+  - Interpréter les champs `id`, `island`, `status`, `etaDays` de chaque livraison.
+  - Faire évoluer le statut et/ou `etaDays` d'une livraison existante via `PATCH /deliveries/{id}`.
+- **Ne peut pas faire** :
+  - Créer ou supprimer une livraison.
   - S'authentifier — accès public, sans restriction de sécurité.
   - Filtrer, trier ou paginer les résultats.
+  - Persister les modifications entre requêtes (les mutations via PATCH sont éphémères : l'état est réinitialisé à chaque nouvelle requête).
 
 ### Système applicatif
 
@@ -80,7 +82,7 @@ Exemple de réponse (données actuelles) :
 - **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:30`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
 - **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:24-25,31`, depuis PR#8 commit `40a273c`). Valeur non numérique → ignorée, filtre inactif. Absent → aucune limite sur ETA.
 - **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
-- **Données invariantes à l'exécution** : la constante `DELIVERIES` est `private const` (`src/Controller/DeliveryController.php:14`) — aucun setter, aucune injection dynamique. Les données ne changent que par modification du code source et redéploiement.
+- **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur. Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
 
 ### 2. Consulter les livraisons en attente d'acheminement
@@ -133,7 +135,7 @@ Note : Moorea (status `livre`) est exclue du résultat.
 
 ### Entité : Livraison
 
-**Modèle physique** : constante PHP `DeliveryController::DELIVERIES` (`src/Controller/DeliveryController.php:13-17`).
+**Modèle physique** : constante PHP `DeliveryController::DEFAULT_DELIVERIES` (`src/Controller/DeliveryController.php:14-18`), copiée dans la propriété d'instance `$deliveries` à chaque instanciation.
 
 **Modèle logique** (point de vue métier) :
 
@@ -147,7 +149,7 @@ Note : Moorea (status `livre`) est exclue du résultat.
 ### Données actuelles
 
 ```php
-private const DELIVERIES = [
+private const DEFAULT_DELIVERIES = [
     ['id' => 1, 'island' => 'Bora Bora', 'status' => 'en_transit', 'etaDays' => 3],
     ['id' => 2, 'island' => 'Moorea', 'status' => 'livre', 'etaDays' => 0],
     ['id' => 3, 'island' => 'Huahine', 'status' => 'en_transit', 'etaDays' => 5],
@@ -156,10 +158,10 @@ private const DELIVERIES = [
 
 **Caractéristiques**
 
-- 3 livraisons statiques, codées en dur.
+- 3 livraisons codées en dur comme données de départ.
 - Structure plate : pas d'imbrication, pas de tableaux d'objets imbriqués.
 - Données fictives : îles réelles (Polynésie française) mais statut et ETA imaginaires.
-- Immutabilité garantie : constante `private const` — aucune mutation possible sans modification du code source.
+- Mutabilité intra-requête : copiées dans `$this->deliveries` à l'instanciation, modifiables via `PATCH /deliveries/{id}` pour la durée de la requête ; l'état de départ est restauré à chaque nouvelle requête.
 
 ## Exigences métier
 
@@ -233,17 +235,17 @@ private const DELIVERIES = [
 
 ---
 
-### Risque 3 : Données figées, mises à jour impossibles sans redéploiement
+### Risque 3 : Mutations éphémères — persistance impossible sans base de données
 
-**Description** : les livraisons sont une constante PHP immutable. Toute modification d'une livraison réelle (changement de statut, correction d'ETA) nécessite un changement du code source et un redéploiement.
+**Description** : `PATCH /deliveries/{id}` permet de modifier le statut et `etaDays` d'une livraison intra-requête, mais ces changements sont perdus dès que la requête se termine. La propriété `$this->deliveries` est réinitialisée depuis `DEFAULT_DELIVERIES` à chaque nouvelle instanciation du contrôleur (chaque requête HTTP). Aucune base de données ni couche de persistance n'est présente.
 
-**Impact** : délai opérationnel ; impossibilité de corriger une donnée rapidement en cas d'erreur.
+**Impact** : un opérateur qui marque une livraison comme `livre` via PATCH verra l'état revenir à `en_transit` à la requête suivante. Le PATCH est fonctionnel pour démontrer la logique, mais sans effet durable.
 
 **Mitigation actuelle** : ce pilote n'est pas opérationnel — c'est le comportement attendu d'une démonstration.
 
-**Recommandation** : si le projet doit devenir opérationnel, introduire une base de données et une couche de persistance comme prérequis fondamental.
+**Recommandation** : si le projet doit devenir opérationnel, introduire une base de données et une couche de persistance (Doctrine ORM) comme prérequis fondamental.
 
-**Source** : `src/Controller/DeliveryController.php:12-17`.
+**Source** : `src/Controller/DeliveryController.php:22-27` (constructeur et propriété `$deliveries`).
 
 ---
 
@@ -304,7 +306,7 @@ Un endpoint `GET /deliveries/{id}` est-il un besoin fonctionnel, même pour ce p
 ## Hors périmètre (fonctionnalités conscemment absentes)
 
 - Créer une livraison (`POST /deliveries`)
-- Modifier une livraison (`PATCH /deliveries/{id}`, `PUT /deliveries/{id}`)
+- Remplacer intégralement une livraison (`PUT /deliveries/{id}`)
 - Supprimer une livraison (`DELETE /deliveries/{id}`)
 - Filtrer par statut (`?status=`)
 - Trier les résultats (`?sort=`)
