@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -29,8 +30,12 @@ class DeliveryController
     #[Route('/deliveries', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $island = $request->query->get('island');
-        $maxEtaDaysRaw = $request->query->get('maxEtaDays');
+        try {
+            $island = $request->query->get('island') ?: null;
+            $maxEtaDaysRaw = $request->query->get('maxEtaDays');
+        } catch (BadRequestException) {
+            return new JsonResponse(['error' => 'Paramètre invalide'], 400);
+        }
 
         if ($maxEtaDaysRaw !== null && !is_numeric($maxEtaDaysRaw)) {
             return new JsonResponse(['error' => 'maxEtaDays invalide'], 400);
