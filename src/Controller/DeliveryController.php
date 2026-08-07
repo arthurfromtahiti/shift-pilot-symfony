@@ -37,7 +37,7 @@ class DeliveryController
             return new JsonResponse(['error' => 'Paramètre invalide'], 400);
         }
 
-        if ($maxEtaDaysRaw !== null && !is_numeric($maxEtaDaysRaw)) {
+        if ($maxEtaDaysRaw !== null && (!is_numeric($maxEtaDaysRaw) || (int) $maxEtaDaysRaw < 0)) {
             return new JsonResponse(['error' => 'maxEtaDays invalide'], 400);
         }
 
