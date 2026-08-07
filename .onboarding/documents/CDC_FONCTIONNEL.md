@@ -80,7 +80,7 @@ Exemple de réponse (données actuelles) :
 **Règles métier**
 
 - **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:48-49`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
-- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:33-51`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
+- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:31-54`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
 - **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
 - **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur (`src/Controller/DeliveryController.php:24-26`). Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
@@ -169,7 +169,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer l'intégralité du catalogue de livraisons inter-îles en une seule requête `GET /deliveries`.
 
-**Preuve** : `src/Controller/DeliveryController.php:46-53` retourne les livraisons filtrées par île et maxEtaDays. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
+**Preuve** : `src/Controller/DeliveryController.php:33-51` retourne les livraisons filtrées par île et maxEtaDays. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant exactement le contenu de la constante.
 
