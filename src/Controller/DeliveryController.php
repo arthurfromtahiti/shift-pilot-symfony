@@ -31,7 +31,7 @@ class DeliveryController
     public function list(Request $request): JsonResponse
     {
         try {
-            $island = $request->query->get('island');
+            $island = $request->query->get('island') ?: null;
             $maxEtaDaysRaw = $request->query->get('maxEtaDays');
         } catch (BadRequestException) {
             return new JsonResponse(['error' => 'Paramètre invalide'], 400);

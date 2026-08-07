@@ -297,4 +297,13 @@ final class DeliveryControllerTest extends TestCase
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('error', $data);
     }
+
+    public function testListEmptyIslandIgnoresFilter(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['island' => '']));
+        $this->assertSame(200, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertCount(3, $data);
+    }
 }
