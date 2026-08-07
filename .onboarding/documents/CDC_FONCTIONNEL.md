@@ -47,7 +47,7 @@
 
 1. Le client émet une requête HTTP `GET /deliveries`.
 2. Symfony route le requête vers `DeliveryController::list()` (`src/Controller/DeliveryController.php:30`).
-3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:41-48`).
+3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:33-51`).
 4. Symfony sérialise le tableau en JSON et retourne HTTP 200 avec `Content-Type: application/json`.
 
 **Résultat attendu** : tableau JSON contenant toutes les livraisons, chacune avec les champs `id`, `island`, `status`, `etaDays`.
@@ -79,8 +79,8 @@ Exemple de réponse (données actuelles) :
 
 **Règles métier**
 
-- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:48-49`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
-- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:31-54`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
+- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:34, 49`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
+- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:35, 40-42, 50`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
 - **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
 - **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur (`src/Controller/DeliveryController.php:24-26`). Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
