@@ -41,7 +41,7 @@
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:29`).
+**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:30`).
 
 **Étapes**
 
@@ -91,14 +91,14 @@ Exemple de réponse (données actuelles) :
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries/pending` (`src/Controller/DeliveryController.php:51-52`).
+**Point d'entrée** : `GET /deliveries/pending` (`src/Controller/DeliveryController.php:56-57`).
 
 **Étapes**
 
 1. Le client émet une requête HTTP `GET /deliveries/pending`.
-2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:52`).
-3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:54-57`).
-4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:54`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
+2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:57`).
+3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:59-62`).
+4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:59`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
 5. La réponse est sérialisée en JSON et retournée avec HTTP 200.
 
 **Résultat attendu** : tableau JSON contenant uniquement les livraisons dont le champ `status` est différent de `'livre'`.
@@ -179,7 +179,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer uniquement les livraisons dont le statut n'est pas `'livre'` en une seule requête `GET /deliveries/pending`.
 
-**Preuve** : `src/Controller/DeliveryController.php:54-57` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
+**Preuve** : `src/Controller/DeliveryController.php:59-63` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant uniquement les livraisons dont `status !== 'livre'`.
 
@@ -199,7 +199,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : les deux routes sont accessibles sans authentification et répondent uniquement aux méthodes HTTP GET.
 
-**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:29,51`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
+**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:30,56`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
 
 **Critère d'acceptation** : `GET /deliveries` et `GET /deliveries/pending` retournent HTTP 200 ; `POST`, `PUT`, `PATCH`, `DELETE` retournent HTTP 405 (Method Not Allowed) ou sont non routable.
 
@@ -259,7 +259,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire un versioning (`/api/v1/deliveries`) avant le premier changement de format de réponse.
 
-**Source** : `src/Controller/DeliveryController.php:29,51`.
+**Source** : `src/Controller/DeliveryController.php:30,56`.
 
 ---
 
@@ -273,7 +273,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire une couche d'authentification (`API key`, `JWT`, `OAuth2`) avant d'exposer des données réelles en production.
 
-**Source** : `src/Controller/DeliveryController.php:29,51` — aucune middleware de sécurité.
+**Source** : `src/Controller/DeliveryController.php:30,56` — aucune middleware de sécurité.
 
 ---
 
