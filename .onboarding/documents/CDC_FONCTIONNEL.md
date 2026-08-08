@@ -41,13 +41,13 @@
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:29`).
+**Point d'entrée** : `GET /deliveries` (`src/Controller/DeliveryController.php:30`).
 
 **Étapes**
 
 1. Le client émet une requête HTTP `GET /deliveries`.
 2. Symfony route le requête vers `DeliveryController::list()` (`src/Controller/DeliveryController.php:30`).
-3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:41-48`).
+3. La méthode applique les filtres optionnels `island` et `maxEtaDays`, puis retourne les livraisons filtrées (`src/Controller/DeliveryController.php:33-51`).
 4. Symfony sérialise le tableau en JSON et retourne HTTP 200 avec `Content-Type: application/json`.
 
 **Résultat attendu** : tableau JSON contenant toutes les livraisons, chacune avec les champs `id`, `island`, `status`, `etaDays`.
@@ -79,8 +79,8 @@ Exemple de réponse (données actuelles) :
 
 **Règles métier**
 
-- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:43-44`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
-- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:33-46`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
+- **Filtrage optionnel par île** : le paramètre `?island=` (insensible à la casse) réduit la réponse aux livraisons destinées à cette île (`src/Controller/DeliveryController.php:34, 49`, depuis PR#7 commit `d12c873`). Absent → toutes les îles retournées.
+- **Filtrage optionnel par délai maximal** : le paramètre `?maxEtaDays=N` (entier ≥ 0) réduit la réponse aux livraisons dont `etaDays <= N` (`src/Controller/DeliveryController.php:35, 40-42, 50`, depuis PR#8 commit `40a273c`). Valeur non numérique → retourne HTTP 400 avec `{"error":"maxEtaDays invalide"}`. Absent → aucune limite sur ETA.
 - **Combinaison des filtres** : les deux filtres sont cumulables (`?island=Moorea&maxEtaDays=5` filtre d'abord par île, puis par ETA). Les deux peuvent être absents (catalogue exhaustif retourné).
 - **Données mutables intra-requête, éphémères entre requêtes** : depuis PR#9, les données de départ (`DEFAULT_DELIVERIES`) sont copiées dans la propriété d'instance `$this->deliveries` à chaque instanciation du contrôleur (`src/Controller/DeliveryController.php:24-26`). Le endpoint `PATCH /deliveries/{id}` peut modifier cette copie pour la durée de la requête (ex. le `pendingCount` reflète immédiatement la mise à jour). En revanche, chaque nouvelle requête Symfony crée une instance fraîche du contrôleur : les modifications ne sont pas persistées entre requêtes.
 - **Pas de versioning de réponse** : la route est `/deliveries` (pas `/api/v1/deliveries`). Tout changement du format JSON (ajout/suppression de champs, renommage) affectera les clients existants sans avertissement.
@@ -91,14 +91,14 @@ Exemple de réponse (données actuelles) :
 
 **Acteur** : client HTTP (consommateur d'API).
 
-**Point d'entrée** : `GET /deliveries/pending` (`src/Controller/DeliveryController.php:51-52`).
+**Point d'entrée** : `GET /deliveries/pending` (route à `src/Controller/DeliveryController.php:56`, méthode à `:57`).
 
 **Étapes**
 
 1. Le client émet une requête HTTP `GET /deliveries/pending`.
-2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:52`).
-3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:54-57`).
-4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:54`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
+2. Symfony route la requête vers `DeliveryController::pending()` (`src/Controller/DeliveryController.php:57`, déclaration de la méthode).
+3. La méthode applique un filtre en mémoire : `array_filter($this->deliveries, fn(array $d) => $d['status'] !== 'livre')` (`src/Controller/DeliveryController.php:59-62`).
+4. La méthode réindexe le tableau filtré : `array_values(...)` (`src/Controller/DeliveryController.php:59`), pour que le JSON résultant soit un tableau JSON et non un objet avec des clés non contiguës.
 5. La réponse est sérialisée en JSON et retournée avec HTTP 200.
 
 **Résultat attendu** : tableau JSON contenant uniquement les livraisons dont le champ `status` est différent de `'livre'`.
@@ -169,7 +169,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer l'intégralité du catalogue de livraisons inter-îles en une seule requête `GET /deliveries`.
 
-**Preuve** : `src/Controller/DeliveryController.php:41-48` retourne les livraisons filtrées par île et maxEtaDays. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
+**Preuve** : `src/Controller/DeliveryController.php:33-51` retourne les livraisons filtrées par île et maxEtaDays. Test vérifié : `tests/DeliveryControllerTest.php:9-16` (`testListReturnsAllDeliveries`) affirme que 3 livraisons sont retournées.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant exactement le contenu de la constante.
 
@@ -179,7 +179,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : un client HTTP peut récupérer uniquement les livraisons dont le statut n'est pas `'livre'` en une seule requête `GET /deliveries/pending`.
 
-**Preuve** : `src/Controller/DeliveryController.php:54-57` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
+**Preuve** : `src/Controller/DeliveryController.php:59-63` applique `array_filter(..., fn => $d['status'] !== 'livre')`. Test vérifié : `tests/DeliveryControllerTest.php:18-27` (`testPendingExcludesDelivered`) affirme que 2 livraisons sont retournées et qu'aucune n'a le statut `'livre'`.
 
 **Critère d'acceptation** : l'endpoint retourne HTTP 200 avec un tableau JSON contenant uniquement les livraisons dont `status !== 'livre'`.
 
@@ -199,7 +199,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Énoncé** : les deux routes sont accessibles sans authentification et répondent uniquement aux méthodes HTTP GET.
 
-**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:29,51`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
+**Preuve** : attributs PHP `#[Route('/deliveries', methods: ['GET'])]` et `#[Route('/deliveries/pending', methods: ['GET'])]` (`src/Controller/DeliveryController.php:30,56`) ; aucune middleware d'authentification ; découverte automatique via `config/routes.yaml:1-3`.
 
 **Critère d'acceptation** : `GET /deliveries` et `GET /deliveries/pending` retournent HTTP 200 ; `POST`, `PUT`, `PATCH`, `DELETE` retournent HTTP 405 (Method Not Allowed) ou sont non routable.
 
@@ -259,7 +259,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire un versioning (`/api/v1/deliveries`) avant le premier changement de format de réponse.
 
-**Source** : `src/Controller/DeliveryController.php:29,51`.
+**Source** : `src/Controller/DeliveryController.php:30,56`.
 
 ---
 
@@ -273,7 +273,7 @@ private const DEFAULT_DELIVERIES = [
 
 **Recommandation** : introduire une couche d'authentification (`API key`, `JWT`, `OAuth2`) avant d'exposer des données réelles en production.
 
-**Source** : `src/Controller/DeliveryController.php:29,51` — aucune middleware de sécurité.
+**Source** : `src/Controller/DeliveryController.php:30,56` — aucune middleware de sécurité.
 
 ---
 
