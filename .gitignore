@@ -1,3 +1,5 @@
 /vendor/
 /var/
 .env.local
+/phpunit.xml
+/.phpunit.result.cache

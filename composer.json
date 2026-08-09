@@ -20,6 +20,6 @@
         "psr-4": { "App\\Tests\\": "tests/" }
     },
     "scripts": {
-        "test": "phpunit tests"
+        "test": "vendor/bin/simple-phpunit"
     }
 }
