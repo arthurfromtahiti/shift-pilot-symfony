@@ -289,6 +289,15 @@ final class DeliveryControllerTest extends TestCase
         $this->assertSame('maxEtaDays invalide', $data['error']);
     }
 
+    public function testListReturns400ForNegativeFloatMaxEtaDays(): void
+    {
+        $controller = new DeliveryController();
+        $response = $controller->list(new Request(['maxEtaDays' => '-0.5']));
+        $this->assertSame(400, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame('maxEtaDays invalide', $data['error']);
+    }
+
     public function testListReturns400WhenIslandIsArray(): void
     {
         $controller = new DeliveryController();
