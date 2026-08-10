@@ -31,5 +31,10 @@
         "symfony": {
             "allow-contrib": false
         }
+    },
+    "config": {
+        "platform": {
+            "php": "8.1"
+        }
     }
 }
