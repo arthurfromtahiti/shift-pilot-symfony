@@ -8,18 +8,28 @@
         "symfony/framework-bundle": "5.4.*",
         "symfony/http-kernel": "5.4.*",
         "symfony/routing": "5.4.*",
-        "symfony/yaml": "5.4.*"
+        "symfony/yaml": "5.4.*",
+        "doctrine/annotations": "^1.13"
     },
     "require-dev": {
         "symfony/phpunit-bridge": "5.4.*"
     },
     "autoload": {
-        "psr-4": { "App\\": "src/" }
+        "psr-4": {
+            "App\\": "src/"
+        }
     },
     "autoload-dev": {
-        "psr-4": { "App\\Tests\\": "tests/" }
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
     },
     "scripts": {
         "test": "vendor/bin/simple-phpunit"
+    },
+    "extra": {
+        "symfony": {
+            "allow-contrib": false
+        }
     }
 }
