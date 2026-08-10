@@ -1,0 +1,37 @@
+name: CI
+# Vérifie chaque PR AVANT fusion. Sans ce fichier, `deploy.yml` ne se déclenche
+# que sur `push` vers main/staging : son contrôle de fumée ne pourrait donc
+# prouver son propre fonctionnement qu'APRÈS la fusion — trop tard pour décider.
+on:
+  pull_request:
+  push:
+    branches: [main, staging]
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      - run: composer install --no-interaction --prefer-dist
+      - name: Tests
+        run: composer test
+      - name: Contrôle de fumée — l'application démarre et répond
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8099 -t public > /tmp/serveur.log 2>&1 &
+          CODE=000
+          for i in $(seq 1 20); do
+            sleep 0.5
+            CODE="$(curl -s -o /tmp/fumee.out -w '%{http_code}' http://127.0.0.1:8099/deliveries || true)"
+            [ "$CODE" = "200" ] && break
+          done
+          if [ "$CODE" != "200" ]; then
+            echo "Contrôle de fumée ÉCHOUÉ (HTTP $CODE)."
+            cat /tmp/serveur.log
+            exit 1
+          fi
+          echo "Contrôle de fumée OK : GET /deliveries → 200"
+          head -c 300 /tmp/fumee.out
